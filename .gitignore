@@ -1,0 +1,6 @@
+.env
+traefik/letsencrypt
+traefik/log
+xray/log
+prometheus/data
+grafana/data

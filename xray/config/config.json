@@ -1,0 +1,132 @@
+{
+    "log": {
+        "loglevel": "debug",
+        "access": "/var/log/xray/access.log",
+        "error": "/var/log/xray/error.log"
+    },
+    "stats": {},
+    "api": {
+        "tag": "api",
+        "services": [
+            "StatsService"
+        ]
+    },
+    "policy": {
+        "levels": {
+            "0": {
+                "statsUserUplink": true,
+                "statsUserDownlink": true
+            }
+        },
+        "system": {
+            "statsInboundUplink": true,
+            "statsInboundDownlink": true,
+            "statsOutboundUplink": true,
+            "statsOutboundDownlink": true
+        }
+    },
+    "inbounds": [
+        {
+            "tag": "vless-h2",
+            "port": 3000,
+            "listen": "0.0.0.0",
+            "protocol": "vless",
+            "settings": {
+                "clients": [
+                    {
+                        "id": "",
+                        "level": 0
+                    }
+                ],
+                "decryption": "none"
+            },
+            "streamSettings": {
+                "network": "h2",
+                "security": "none",
+                "httpSettings": {
+                    "path": "/vless-h2",
+                    "host": [
+                        ""
+                    ]
+                }
+            }
+        },
+        {
+            "tag": "vmess-ws",
+            "port": 3001,
+            "listen": "0.0.0.0",
+            "protocol": "vmess",
+            "settings": {
+                "clients": [
+                    {
+                        "id": "",
+                        "alterId": 0,
+                        "level": 0
+                    }
+                ],
+                "decryption": "none"
+            },
+            "streamSettings": {
+                "network": "ws",
+                "security": "none",
+                "wsSettings": {
+                    "path": "/vmess-ws"
+                }
+            }
+        },
+        {
+            "tag": "api",
+            "port": 10085,
+            "listen": "0.0.0.0",
+            "protocol": "dokodemo-door",
+            "settings": {
+                "udp": false,
+                "address": "0.0.0.0",
+                "allowTransparent": false
+            }
+        }
+    ],
+    "outbounds": [
+        {
+            "tag": "direct",
+            "protocol": "freedom"
+        },
+        {
+            "tag": "block",
+            "protocol": "blackhole",
+            "settings": {
+                "response": {
+                    "type": "http"
+                }
+            }
+        }
+    ],
+    "routing": {
+        "domainStrategy": "IPIfNonMatch",
+        "domainMatcher": "linear",
+        "rules": [
+            {
+                "type": "field",
+                "inboundTag": [
+                    "api"
+                ],
+                "outboundTag": "api",
+                "enabled": true
+            },
+            {
+                "type": "field",
+                "ip": [
+                    "geoip:private"
+                ],
+                "outboundTag": "block"
+            },
+            {
+                "type": "field",
+                "domain": [
+                    "geosite:category-ads-all"
+                ],
+                "outboundTag": "block"
+            }
+        ]
+    }
+}

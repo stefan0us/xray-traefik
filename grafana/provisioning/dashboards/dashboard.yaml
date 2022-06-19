@@ -1,0 +1,13 @@
+apiVersion: 1
+
+providers:
+  - name: 'Node Exporter Full'
+    type: file
+    editable: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/json/node-exporter-full_rev27.json
+  - name: 'V2Ray Dashboard'
+    type: file
+    editable: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/json/v2ray-dashboard_rev4.json
