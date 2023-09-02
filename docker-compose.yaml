@@ -8,7 +8,7 @@ networks:
 
 services:
   traefik:
-    image: traefik
+    image: arm64v8/traefik
     restart: always
     container_name: traefik
     networks:
@@ -23,7 +23,8 @@ services:
       - --api.debug=true
       - --log.level=DEBUG
       - --log.filePath=/var/log/traefik/traefik.log
-      - --accessLog=/var/log/traefik/access.log
+      - --accesslog=true
+      - --accesslog.filePath=/var/log/traefik/access.log
       - --providers.docker=true
       - --providers.docker.exposedbydefault=false
       - --entrypoints.web.address=:80
@@ -53,7 +54,7 @@ services:
       traefik.http.middlewares.redirect_https.redirectscheme.scheme: https
 
   whoami:
-    image: 'traefik/whoami'
+    image: 'traefik/whoami:latest-arm.v8'
     container_name: 'whoami'
     networks:
       - traefik
@@ -80,9 +81,11 @@ services:
     expose:
       - 3000
       - 3001
+      - 3002
       - 10085
     labels:
       traefik.enable: true
+
       traefik.http.routers.xray_vless.rule: Host(`${SERVER_DOMAIN}`) && Path(`/vless-h2`)
       traefik.http.routers.xray_vless.service: xray_vless
       traefik.http.routers.xray_vless.entrypoints: web-secured
@@ -96,6 +99,13 @@ services:
       traefik.http.routers.xray_vmess.tls: true
       traefik.http.routers.xray_vmess.tls.certresolver: myresolver
       traefik.http.services.xray_vmess.loadbalancer.server.port: 3001
+      traefik.http.routers.xray_grpc.rule: Host(`${SERVER_DOMAIN}`) && Path(`/GunService/Tun`)
+      traefik.http.routers.xray_grpc.service: xray_grpc
+      traefik.http.routers.xray_grpc.entrypoints: web-secured
+      traefik.http.routers.xray_grpc.tls: true
+      traefik.http.routers.xray_grpc.tls.certresolver: myresolver
+      traefik.http.services.xray_grpc.loadbalancer.server.port: 3002
+      traefik.http.services.xray_grpc.loadbalancer.server.scheme: h2c
 
   grafana:
     image: grafana/grafana
