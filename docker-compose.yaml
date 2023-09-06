@@ -1,4 +1,4 @@
-version: '3'
+version: "3.3"
 
 networks:
   monitor:
@@ -8,112 +8,123 @@ networks:
 
 services:
   traefik:
-    image: arm64v8/traefik
+    image: traefik:v2.10
     restart: always
     container_name: traefik
     networks:
       - traefik
       - monitor
     ports:
-      - '80:80'
-      - '443:443'
+      - "80:80"
+      - "443:443"
     command:
-      - --api.insecure=false
-      - --api.dashboard=true
-      - --api.debug=true
       - --log.level=DEBUG
       - --log.filePath=/var/log/traefik/traefik.log
       - --accesslog=true
       - --accesslog.filePath=/var/log/traefik/access.log
+      - --api.dashboard=true
+      - --api.insecure=true
       - --providers.docker=true
       - --providers.docker.exposedbydefault=false
       - --entrypoints.web.address=:80
-      - --entrypoints.web-secured.address=:443
-      - --certificatesresolvers.myresolver.acme.dnschallenge=true
-      - --certificatesresolvers.myresolver.acme.dnschallenge.provider=cloudflare
-      - --certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json
+      - --entrypoints.web.http.redirections.entryPoint.to=websecure
+      - --entrypoints.web.http.redirections.entryPoint.scheme=https
+      - --entrypoints.websecure.address=:443
+      - --certificatesresolvers.resolver.acme.dnsChallenge=true
+      - --certificatesresolvers.resolver.acme.dnsChallenge.provider=cloudflare
+      # - --certificatesresolvers.resolver.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory
+      - --certificatesresolvers.resolver.acme.email=123337671@qq.com
+      - --certificatesresolvers.resolver.acme.storage=/letsencrypt/acme.json
     environment:
-      TZ: Asia/Shanghai
-      CF_API_EMAIL: ${CF_API_EMAIL}
-      CF_API_KEY: ${CF_API_KEY}
-    volumes:
-      - ./traefik/letsencrypt:/letsencrypt
-      - ./traefik/log:/var/log/traefik
-      - /var/run/docker.sock:/var/run/docker.sock
+      - CF_DNS_API_TOKEN=4x6_gGnZU2J7ttqW7HglC1QEjr7N4jmMlJIHmPcd
     labels:
       traefik.enable: true
-      traefik.http.routers.http_catchall.rule: hostregexp(`{host:.*}`)
-      traefik.http.routers.http_catchall.entryPoints: web
-      traefik.http.routers.http_catchall.middlewares: redirect_https
-      traefik.http.routers.traefik.rule: Host(`traefik.${SERVER_DOMAIN}`)
-      traefik.http.routers.traefik.entryPoints: web-secured
-      traefik.http.routers.traefik.service: api@internal
-      traefik.http.routers.traefik.tls.certresolver: myresolver
-      traefik.http.routers.traefik.tls.domains[0].main: "$SERVER_DOMAIN"
-      traefik.http.routers.traefik.tls.domains[0].sans: "*.${SERVER_DOMAIN}"
-      traefik.http.middlewares.redirect_https.redirectscheme.scheme: https
+      # traefik.http.routers.http_catchall.rule: hostregexp(`{host:.*}`)
+      # traefik.http.routers.http_catchall.entryPoints: web
+      # traefik.http.routers.http_catchall.middlewares: redirect_https
+      traefik.http.routers.traefik-dashboard.rule: Host(`traefik.${DOMAIN}`)
+      traefik.http.routers.traefik-dashboard.entrypoints: websecure
+      traefik.http.routers.traefik-dashboard.service: api@internal
+      traefik.http.routers.traefik-dashboard.middlewares: basic-auth-global
+      traefik.http.routers.traefik-dashboard.tls.certresolver: resolver
+      traefik.http.routers.traefik-dashboard.tls.domains[0].main: $DOMAIN
+      traefik.http.routers.traefik-dashboard.tls.domains[0].sans: "*.${DOMAIN}"
+      traefik.http.middlewares.basic-auth-global.basicauth.users: ninecats:$$apr1$$DYG6aTeG$$8igJ59G0ftFTgLSpefsvU/
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/log:/var/log/traefik
+      - ./traefik/letsencrypt:/letsencrypt
 
   whoami:
-    image: 'traefik/whoami:latest-arm.v8'
-    container_name: 'whoami'
+    image: traefik/whoami
+    container_name: whoami
     networks:
       - traefik
-    environment:
-      TZ: Asia/Shanghai
     labels:
       traefik.enable: true
-      traefik.http.routers.whoami.rule: Host(`whoami.${SERVER_DOMAIN}`)
-      traefik.http.routers.whoami.entrypoints: web-secured
-      traefik.http.routers.whoami.tls.certresolver: myresolver
+      traefik.http.routers.whoami.rule: Host(`whoami.${DOMAIN}`)
+      traefik.http.routers.whoami.entrypoints: websecure
+      traefik.http.routers.whoami.tls.certresolver: resolver
+      traefik.http.routers.whoami.tls.domains[0].main: $DOMAIN
+      traefik.http.routers.whoami.tls.domains[0].sans: "*.${DOMAIN}"
+
+  portainer:
+    image: portainer/portainer-ce:alpine
+    restart: unless-stopped
+    container_name: portainer
+    networks:
+      - traefik
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./portainer:/data
+    labels:
+      traefik.enable: true
+      # Frontend
+      traefik.http.services.portainer-frontend.loadbalancer.server.port: 9000
+      traefik.http.routers.portainer-frontend.rule: Host(`portainer.${DOMAIN}`)
+      traefik.http.routers.portainer-frontend.entrypoints: websecure
+      traefik.http.routers.portainer-frontend.service: portainer-frontend
+      traefik.http.routers.portainer-frontend.tls.certresolver: resolver
+      traefik.http.routers.portainer-frontend.tls.domains[0].main: $DOMAIN
+      traefik.http.routers.portainer-frontend.tls.domains[0].sans: "*.${DOMAIN}"
+      # Edge
+      traefik.http.services.portainer-edge.loadbalancer.server.port: 8000
+      traefik.http.routers.portainer-edge.rule: Host(`edge.${DOMAIN}`)
+      traefik.http.routers.portainer-edge.entrypoints: websecure
+      traefik.http.routers.portainer-edge.service: portainer-edge
+      traefik.http.routers.portainer-edge.tls.certresolver: resolver
+      traefik.http.routers.portainer-edge.tls.domains[0].main: $DOMAIN
+      traefik.http.routers.portainer-edge.tls.domains[0].sans: "*.${DOMAIN}"
 
   xray:
     image: teddysun/xray
     container_name: xray
     restart: unless-stopped
-    environment:
-      TZ: Asia/Shanghai
     networks:
       - traefik
       - monitor
-    volumes: 
+    volumes:
       - ./xray/config:/etc/xray
       - ./xray/log:/var/log/xray
     expose:
       - 3000
-      - 3001
-      - 3002
       - 10085
     labels:
       traefik.enable: true
-
-      traefik.http.routers.xray_vless.rule: Host(`${SERVER_DOMAIN}`) && Path(`/vless-h2`)
-      traefik.http.routers.xray_vless.service: xray_vless
-      traefik.http.routers.xray_vless.entrypoints: web-secured
-      traefik.http.routers.xray_vless.tls: true
-      traefik.http.routers.xray_vless.tls.certresolver: myresolver
-      traefik.http.services.xray_vless.loadbalancer.server.port: 3000
-      traefik.http.services.xray_vless.loadbalancer.server.scheme: h2c
-      traefik.http.routers.xray_vmess.rule: Host(`${SERVER_DOMAIN}`) && Path(`/vmess-ws`)
-      traefik.http.routers.xray_vmess.service: xray_vmess
-      traefik.http.routers.xray_vmess.entrypoints: web-secured
-      traefik.http.routers.xray_vmess.tls: true
-      traefik.http.routers.xray_vmess.tls.certresolver: myresolver
-      traefik.http.services.xray_vmess.loadbalancer.server.port: 3001
-      traefik.http.routers.xray_grpc.rule: Host(`${SERVER_DOMAIN}`) && Path(`/GunService/Tun`)
-      traefik.http.routers.xray_grpc.service: xray_grpc
-      traefik.http.routers.xray_grpc.entrypoints: web-secured
-      traefik.http.routers.xray_grpc.tls: true
-      traefik.http.routers.xray_grpc.tls.certresolver: myresolver
-      traefik.http.services.xray_grpc.loadbalancer.server.port: 3002
-      traefik.http.services.xray_grpc.loadbalancer.server.scheme: h2c
+      traefik.http.services.xray-vmess.loadbalancer.server.port: 3000
+      traefik.http.routers.xray-vmess.rule: Host(`${DOMAIN}`) && Path(`/vmess-ws`)
+      traefik.http.routers.xray-vmess.entrypoints: websecure
+      traefik.http.routers.xray-vmess.service: xray-vmess
+      traefik.http.routers.xray-vmess.tls.certresolver: resolver
 
   grafana:
     image: grafana/grafana
     container_name: grafana
     restart: unless-stopped
-    user: "472"
+    user: root
+    # user: "472"
     environment:
-     DS_PROMETHEUS: prometheus
+      DS_PROMETHEUS: prometheus
     volumes:
       - ./grafana/data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning
@@ -122,26 +133,27 @@ services:
       - monitor
     labels:
       traefik.enable: true
-      traefik.http.routers.grafana.rule: Host(`grafana.${SERVER_DOMAIN}`)
-      traefik.http.routers.grafana.entrypoints: web-secured
-      traefik.http.routers.grafana.tls.certresolver: myresolver
+      traefik.http.routers.grafana.rule: Host(`grafana.${DOMAIN}`)
+      traefik.http.routers.grafana.entrypoints: websecure
+      traefik.http.routers.grafana.tls.certresolver: resolver
 
   prometheus:
     image: prom/prometheus
     container_name: prometheus
     restart: unless-stopped
+    user: root
     volumes:
       - ./prometheus/data:/prometheus
       - ./prometheus/config:/etc/prometheus
     networks:
       - monitor
     command:
-        - '--config.file=/etc/prometheus/prometheus.yml'
-        - '--web.enable-admin-api'
-        - '--web.enable-lifecycle'
-        - '--storage.tsdb.path=/prometheus'
-        - '--web.console.libraries=/etc/prometheus/console_libraries'
-        - '--web.console.templates=/etc/prometheus/consoles'
+     - "--config.file=/etc/prometheus/prometheus.yml"
+     - "--web.enable-admin-api"
+     - "--web.enable-lifecycle"
+     - "--storage.tsdb.path=/prometheus"
+     - "--web.console.libraries=/etc/prometheus/console_libraries"
+     - "--web.console.templates=/etc/prometheus/consoles"
 
   node-exporter:
     image: prom/node-exporter:latest
@@ -154,10 +166,10 @@ services:
     networks:
       - monitor
     command:
-      - '--path.procfs=/host/proc'
-      - '--path.rootfs=/rootfs'
-      - '--path.sysfs=/host/sys'
-      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+      - "--path.procfs=/host/proc"
+      - "--path.rootfs=/rootfs"
+      - "--path.sysfs=/host/sys"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
 
   v2ray-exporter:
     image: wi1dcard/v2ray-exporter:master
@@ -165,4 +177,4 @@ services:
     networks:
       - monitor
     restart: unless-stopped
-    command: 'v2ray-exporter --v2ray-endpoint "xray:10085" --listen ":9550"'
+    command: 'v2ray-exporter --v2ray-endpoint "xray:10085" --listen ":9550"'    
