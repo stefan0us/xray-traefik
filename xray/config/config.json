@@ -34,7 +34,7 @@
             "settings": {
                 "clients": [
                     {
-                        "id": "",
+                        "id": "[DETACHED]",
                         "level": 0
                     }
                 ],
@@ -46,7 +46,7 @@
                 "httpSettings": {
                     "path": "/vless-h2",
                     "host": [
-                        ""
+                        "[DETACHED]"
                     ]
                 }
             }
@@ -59,7 +59,7 @@
             "settings": {
                 "clients": [
                     {
-                        "id": "",
+                        "id": "[DETACHED]",
                         "alterId": 0,
                         "level": 0
                     }
@@ -82,7 +82,7 @@
             "settings": {
                 "clients": [
                     {
-                        "id": "",
+                        "id": "[DETACHED]",
                         "level": 0
                     }
                 ],

@@ -9,6 +9,7 @@
 - xray
     - `https://${SERVER_DOMAIN}/vless-h2`
     - `https://${SERVER_DOMAIN}/vmess-ws`
+    - `https://${SERVER_DOMAIN}/GunService/Tun`
 - grafana
     - `https://grafana.${SERVER_DOMAIN}`
 
