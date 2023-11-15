@@ -16,7 +16,7 @@ services:
       - monitor
     ports:
       - '80:80'
-      - '443:443'
+    #   - '443:443'
     command:
       - --api.insecure=false
       - --api.dashboard=true
@@ -30,6 +30,7 @@ services:
       - --providers.docker.exposedbydefault=false
       - --entrypoints.web.address=:80
       - --entrypoints.web-secured.address=:443
+      - --entryPoints.web-secured.proxyProtocol.insecure
       - --certificatesresolvers.myresolver.acme.dnschallenge=true
       - --certificatesresolvers.myresolver.acme.dnschallenge.provider=cloudflare
       - --certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json
@@ -84,6 +85,8 @@ services:
     volumes: 
       - ./xray/config:/etc/xray
       - ./xray/log:/var/log/xray
+    ports:
+      - 443:443
     expose:
       - 3000
       - 3001
@@ -92,20 +95,20 @@ services:
     labels:
       traefik.enable: true
 
-      traefik.http.routers.xray_vless.rule: Host(`${SERVER_DOMAIN}`) && Path(`/vless-h2`)
-      traefik.http.routers.xray_vless.service: xray_vless
-      traefik.http.routers.xray_vless.entrypoints: web-secured
-      traefik.http.routers.xray_vless.tls: true
-      traefik.http.routers.xray_vless.tls.certresolver: myresolver
-      traefik.http.services.xray_vless.loadbalancer.server.port: 3000
-      traefik.http.services.xray_vless.loadbalancer.server.scheme: h2c
-
       traefik.http.routers.xray_vmess.rule: Host(`${SERVER_DOMAIN}`) && Path(`/vmess-ws`)
       traefik.http.routers.xray_vmess.service: xray_vmess
       traefik.http.routers.xray_vmess.entrypoints: web-secured
       traefik.http.routers.xray_vmess.tls: true
       traefik.http.routers.xray_vmess.tls.certresolver: myresolver
-      traefik.http.services.xray_vmess.loadbalancer.server.port: 3001
+      traefik.http.services.xray_vmess.loadbalancer.server.port: 3000
+
+      traefik.http.routers.xray_vless.rule: Host(`${SERVER_DOMAIN}`) && Path(`/vless-h2`)
+      traefik.http.routers.xray_vless.service: xray_vless
+      traefik.http.routers.xray_vless.entrypoints: web-secured
+      traefik.http.routers.xray_vless.tls: true
+      traefik.http.routers.xray_vless.tls.certresolver: myresolver
+      traefik.http.services.xray_vless.loadbalancer.server.port: 3001
+      traefik.http.services.xray_vless.loadbalancer.server.scheme: h2c
 
       traefik.http.routers.xray_grpc.rule: Host(`${SERVER_DOMAIN}`) && Path(`/GunService/Tun`)
       traefik.http.routers.xray_grpc.service: xray_grpc
