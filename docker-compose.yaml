@@ -23,6 +23,7 @@ services:
       - --api.debug=true
       - --log.level=DEBUG
       - --log.filePath=/var/log/traefik/traefik.log
+      - --accesslog.fields.names.StartUTC=drop
       - --accesslog=true
       - --accesslog.filePath=/var/log/traefik/access.log
       - --providers.docker=true
@@ -32,6 +33,8 @@ services:
       - --certificatesresolvers.myresolver.acme.dnschallenge=true
       - --certificatesresolvers.myresolver.acme.dnschallenge.provider=cloudflare
       - --certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json
+      - --metrics.prometheus=true
+      - --metrics.prometheus.buckets=0.1,0.3,1.2,5.0
     environment:
       TZ: Asia/Shanghai
       CF_API_EMAIL: ${CF_API_EMAIL}
@@ -40,6 +43,8 @@ services:
       - ./traefik/letsencrypt:/letsencrypt
       - ./traefik/log:/var/log/traefik
       - /var/run/docker.sock:/var/run/docker.sock
+      - /usr/share/zoneinfo:/usr/share/zoneinfo:ro
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime:ro
     labels:
       traefik.enable: true
       traefik.http.routers.http_catchall.rule: hostregexp(`{host:.*}`)

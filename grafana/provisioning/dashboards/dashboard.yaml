@@ -6,6 +6,11 @@ providers:
     editable: true
     options:
       path: /etc/grafana/provisioning/dashboards/json/node-exporter-full_rev27.json
+  - name: 'Traefik Dashboard'
+    type: file
+    editable: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/json/traefik_17346_rev7.json
   - name: 'V2Ray Dashboard'
     type: file
     editable: true
